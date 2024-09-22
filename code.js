@@ -1,11 +1,13 @@
 import express from 'express';
 import fetch from 'node-fetch';
 import https from 'https';
+import cors from 'cors';
 
 const app = express();
 const PORT = 3000;
 
 // Serve static files from the "public" directory (including index.html)
+app.use(cors());
 app.use(express.static('public'));
 
 // Disable SSL validation for development purposes (ONLY USE IN DEV)
