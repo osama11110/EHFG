@@ -4,8 +4,7 @@ import https from 'https';
 import cors from 'cors';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
+const PORT = 3000;
 
 // Serve static files from the "public" directory (including index.html)
 app.use(cors());
@@ -31,5 +30,5 @@ app.get('/get-events', async (req, res) => {
 
 // Start the server
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-  });
+    console.log(`Server is running on ${PORT}`);
+});
