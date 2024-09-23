@@ -191,119 +191,95 @@
     <script>
         let nextEventCheckTime; // Stores the time for the next batch of events
         let stopFetching = false; // Flag to stop fetching events if there's no more space or events
-    
+        
         // Function to fetch and display current and upcoming events via proxy
         async function getUpcomingEvent() {
             const url = "http://localhost:3000/get-events"; // Your local server's proxy URL
             const loadingMessage = document.getElementById('loadingMessage');
             const currentEventsContainer = document.getElementById('currentEventsContainer');
             const upcomingEventsContainer = document.querySelector('.upcoming-events'); // Container for upcoming events
-    
+        
             try {
                 // Show loading indicator
                 loadingMessage.innerText = "";
-    
+        
                 // Fetch the event data from the proxy server
                 const response = await fetch(url);
-    
+        
                 // Check if the response is OK
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
-    
+        
                 // Parse the JSON response
                 const data = await response.json();
-    
+        
                 // Assuming the JSON structure has a list of events in an array
                 const events = data.events || data; // Adjust based on actual JSON structure
-    
+        
                 // Clear any previous events if it's the first time loading
                 if (!nextEventCheckTime) {
                     currentEventsContainer.innerHTML = '';
                     upcomingEventsContainer.innerHTML = '';
                 }
-    
+        
                 // Get the current date and time or the next event check time
                 const currentDate = nextEventCheckTime || new Date(); // Use nextEventCheckTime if set, otherwise use the current time
-    
+        
                 // Detect Current Events: Check if any event is happening now
                 const currentEvents = events.filter(event => {
                     const eventStartDate = combineDateTime(event.date, event.start);
                     const eventEndDate = combineDateTime(event.date, event.end);
                     return eventStartDate && eventEndDate && currentDate >= eventStartDate && currentDate <= eventEndDate;
                 });
-    
-                // Display all current events
-                if (currentEvents.length > 0) {
-                    currentEvents.forEach(currentEvent => {
-                        const currentEventContainer = document.createElement('div');
-                        currentEventContainer.classList.add('event-container');
-                        currentEventContainer.innerHTML = `
-                            <h2>Current Event</h2>
-                            <div class="event-details">
-                                <p><strong>Title:</strong> ${currentEvent.eventname || "Untitled Event"}</p>
-                                <p><strong>Date:</strong> ${formatDateTime(combineDateTime(currentEvent.date, currentEvent.start))} - ${formatDateTime(combineDateTime(currentEvent.date, currentEvent.end))}</p>
-                                <p><strong>Location:</strong> ${currentEvent.location || "Location not specified"}</p>
-    
-                                <!-- Speaker list for current event -->
-                                <div class="speakers" id="currentEventSpeakers-${currentEvent.eventid}"></div>
-                            </div>
-                        `;
-                        currentEventsContainer.appendChild(currentEventContainer);
-    
-                        // Show speakers for the current event
-                        displaySpeakers(currentEvent.speakers, document.getElementById(`currentEventSpeakers-${currentEvent.eventid}`));
-                    });
-                } else if (!nextEventCheckTime) {
-                    currentEventsContainer.innerHTML = '<p>No current events.</p>';
-                }
-    
-                // Detect Upcoming Events: Check for events starting within the next 30 minutes
-                const futureTime = new Date(currentDate.getTime() + 30 * 60 * 1000); // 30 minutes from currentDate
+        
+                // Detect Upcoming Events: Check for upcoming events without a time limit
                 const upcomingEvents = events.filter(event => {
                     const eventStartDate = combineDateTime(event.date, event.start);
-                    return eventStartDate > currentDate && eventStartDate <= futureTime;
+                    return eventStartDate > currentDate;
                 });
-    
-                // If there are no upcoming events, display a message only after the first load
-                if (upcomingEvents.length === 0 && !nextEventCheckTime) {
-                    loadingMessage.innerText = "No upcoming events within the next 30 minutes.";
-                    stopFetching = true;
-                    return;
-                }
-    
-                // Loop through upcoming events and create a container for each event
-                upcomingEvents.forEach(event => {
+        
+                // Combine both current and upcoming events
+                const allEvents = [...currentEvents, ...upcomingEvents];
+        
+                // Limit the total number of displayed events to 4
+                const displayedEvents = allEvents.slice(0, 4);
+        
+                // Display current and upcoming events, up to 4 total
+                displayedEvents.forEach((event, index) => {
                     const eventContainer = document.createElement('div');
                     eventContainer.classList.add('event-container');
+                    const eventType = index < currentEvents.length ? 'Current Event' : 'Upcoming Event'; // Determine if it's current or upcoming
                     eventContainer.innerHTML = `
-                        <h2>Upcoming Event</h2>
+                        <h2>${eventType}</h2>
                         <div class="event-details">
                             <p><strong>Title:</strong> ${event.eventname || "Untitled Event"}</p>
                             <p><strong>Date:</strong> ${formatDateTime(combineDateTime(event.date, event.start))} - ${formatDateTime(combineDateTime(event.date, event.end))}</p>
                             <p><strong>Location:</strong> ${event.location || "Location not specified"}</p>
     
-                            <!-- Speaker list for upcoming event -->
-                            <div class="speakers" id="upcomingEventSpeakers-${event.eventid}"></div>
+                            <!-- Speaker list for event -->
+                            <div class="speakers" id="eventSpeakers-${event.eventid}"></div>
                         </div>
                     `;
-                    upcomingEventsContainer.appendChild(eventContainer);
-    
-                    // Show speakers for the upcoming event
-                    displaySpeakers(event.speakers, document.getElementById(`upcomingEventSpeakers-${event.eventid}`));
+                    
+                    if (eventType === 'Current Event') {
+                        currentEventsContainer.appendChild(eventContainer);
+                    } else {
+                        upcomingEventsContainer.appendChild(eventContainer);
+                    }
+        
+                    // Show speakers for the event
+                    displaySpeakers(event.speakers, document.getElementById(`eventSpeakers-${event.eventid}`));
                 });
-    
+        
                 // Clear loading message once data is fetched
                 loadingMessage.innerText = "";
-    
-                // Check if there's still space left on the screen to fetch more events
-                if (isSpaceLeftOnScreen() && !stopFetching) {
-                    nextEventCheckTime = futureTime; // Set the next time window for fetching events
-                    setTimeout(getUpcomingEvent, 500); // Continue fetching after a short delay
-                } else {
-                    stopFetching = true; // No more space or events
+        
+                // Stop fetching if the total number of displayed events reaches 4
+                if (displayedEvents.length >= 4) {
+                    stopFetching = true;
                 }
-    
+        
             } catch (error) {
                 console.error("Error fetching event data:", error);
                 currentEventsContainer.innerHTML = "Error loading current events.";
@@ -311,12 +287,12 @@
                 loadingMessage.innerText = "Error fetching event data.";
             }
         }
-    
+        
         // Function to combine date and time into a Date object
         function combineDateTime(date, time) {
             return new Date(`${date}T${time}:00`); // Combines date and time strings into ISO format
         }
-    
+        
         // Function to format date and time correctly in local time zone
         function formatDateTime(dateObject) {
             const options = {
@@ -330,7 +306,7 @@
             };
             return dateObject.toLocaleString(undefined, options);
         }
-    
+        
         // Function to display speakers list with names and images
         function displaySpeakers(speakers, container) {
             container.innerHTML = ''; // Clear previous speakers
@@ -350,18 +326,11 @@
                 container.appendChild(speakerElement);
             });
         }
-    
-        // Function to check if there is space left on the screen for more events
-        function isSpaceLeftOnScreen() {
-            const upcomingEventsContainer = document.querySelector('.upcoming-events');
-            const screenHeight = window.innerHeight;
-            const contentHeight = upcomingEventsContainer.scrollHeight;
-            return contentHeight < screenHeight; // Returns true if content doesn't fill the screen yet
-        }
-    
+        
         // Initial call to load events
         window.onload = getUpcomingEvent;
     </script>
+    
     
     
 </body>
