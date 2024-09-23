@@ -243,7 +243,7 @@
                 const allEvents = [...currentEvents, ...upcomingEvents];
         
                 // Limit the total number of displayed events to 4
-                const displayedEvents = allEvents.slice(0, 4);
+                const displayedEvents = allEvents.slice(0, 3);
         
                 // Display current and upcoming events, up to 4 total
                 displayedEvents.forEach((event, index) => {
@@ -276,7 +276,7 @@
                 loadingMessage.innerText = "";
         
                 // Stop fetching if the total number of displayed events reaches 4
-                if (displayedEvents.length >= 4) {
+                if (displayedEvents.length >= 3) {
                     stopFetching = true;
                 }
         
