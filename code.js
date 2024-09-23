@@ -1,18 +1,35 @@
 import express from 'express';
 import fetch from 'node-fetch';
 import https from 'https';
-import cors from 'cors';
 
 const app = express();
 const PORT = 3000;
 
 // Serve static files from the "public" directory (including index.html)
-app.use(cors());
 app.use(express.static('public'));
 
 // Disable SSL validation for development purposes (ONLY USE IN DEV)
 const httpsAgent = new https.Agent({
     rejectUnauthorized: false
+});
+
+// Middleware to manually add CORS headers
+app.use((req, res, next) => {
+    // Set the Access-Control-Allow-Origin header to allow requests from all origins
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    // Set headers to handle preflight requests (OPTIONS method)
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    // Handle preflight requests (OPTIONS method)
+    if (req.method === 'OPTIONS') {
+        // Send a response for OPTIONS preflight requests
+        return res.sendStatus(200);
+    }
+
+    // Move on to the next middleware or route handler
+    next();
 });
 
 // Route to fetch events from external API
